@@ -273,3 +273,7 @@ print('t = ',np.reshape(tVector[n],(len(tVector[n]),1)))
 
 rhat = [crossCoef * item for item in Tdivtsm]
 print('\n\n\n rhat = ',rhat[n])
+
+"""The below calculates rhatc"""
+rhatc = [item / tsm[0] for item in tVector]
+print('\n\n\nrhatc = : ',rhatc[n])
