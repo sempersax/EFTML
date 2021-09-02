@@ -35,6 +35,11 @@ all_weight = weight[b'Rwgt.Weight']
 
 # Initializing params, will contain integers corresponding to 
 # couplings we've turned on
+paramCodes = ['', 'cH', 'cT', 'c6', 'cu', 'cd', 'cl', 'cWW', 'cB', 'cHW', 
+              'cHB', 'cA', 'cG', 'cHQ', 'cpHQ', 'cHu', 'cHd', 'cHud', 'cHL',
+              'cpHL', 'cHe', 'cuB', 'cuW', 'cuG', 'cdB', 'cdW', 'cdG', 'clB',
+              'clW', 'c3W', 'c3G', 'c2W', 'c2B', 'c2G', 'tcHW', 'tcHB', 'tcG',
+              'tcA', 'tc3W', 'tc3G']
 params = []
 with open('../../../wilsonParams.dat', 'r') as f:
     lines = f.read()
@@ -95,17 +100,11 @@ except FileNotFoundError:
     total = np.array(total)
     total = np.transpose(total)
 
-
+print(total)
 num_evnt = len(pids)
 
 particle1_id = 11
 particle2_id = -11
-
-event_info = pd.DataFrame()
-
-evnt_num = 0
-weight_sum = 0
-
 
 # Here we have begun extracting four vector information.
 loc_part1 = np.where(pids[0] == particle1_id)[0][0]
@@ -121,73 +120,40 @@ part2eta = particles[b"Particle.Eta"][:,loc_part2]
 part1phi = particles[b"Particle.Phi"][:,loc_part1]
 part2phi = particles[b"Particle.Phi"][:,loc_part2]
 
+event_info = {'Event' : np.arange(1,num_evnt+1),
+              'emPID' : np.ones(num_evnt)*particle1_id,
+              'epPID' : np.ones(num_evnt)*particle2_id,
+              'emPT'  : np.array(part1pT),
+              'epPT'  : np.array(part2pT),
+              'emEta' : np.array(part1eta),
+              'epEta' : np.array(part2eta)
+              }
 
-#for event in range(num_evnt):
-#    
-#    evnt_pid = pids[event]
-#    loc_part1 = np.where(evnt_pid == particle1_id)
-#    loc_part2 = np.where(evnt_pid == particle2_id)
-#    print(evnt_pid)
+for i in range(len(all_weight[0])):
+    event_info['Weight_c{}'.format(str(i+1))] = all_weight[:,i]
+for i in range(len(params)):
+    for j in range(len(total[:,0])):
+        event_info[paramCodes[params[i]]+str(j+1)] = [total[:,i][j] * item for item in np.ones(len(all_weight))]
     
+#Calculating pz from different weights
+event_info['pzSM'] = event_info['Weight_c1']/(event_info['Weight_c1'].mean())
+event_info['pzdim6_c2'] = event_info['Weight_c2']/(event_info['Weight_c2'].mean())
+event_info['pzdim6_c3'] = event_info['Weight_c3']/(event_info['Weight_c3'].mean())
+event_info['pzdim6_c4'] = event_info['Weight_c4']/(event_info['Weight_c4'].mean())
+event_info['pzdim6_c5'] = event_info['Weight_c5']/(event_info['Weight_c5'].mean())
 
-#    
-#    part1pT = particles[b"Particle.PT"][event][loc_part1][0]
-#    part1eta = particles[b"Particle.Eta"][event][loc_part1][0]
-#    print(part1eta)
-#    part1phi = particles[b"Particle.Phi"][event][loc_part1][0]
-    
-    
-#    part2pT = particles[b"Particle.PT"][event][loc_part2][0]
-#    part2eta = particles[b"Particle.Eta"][event][loc_part2][0]
-#    part2phi = particles[b"Particle.Phi"][event][loc_part2][0]
-    
-    
-#    event_weight = all_weight[event]
+#Calculating rhat from different pz
+event_info['rhat_c2'] = event_info['pzdim6_c2']/event_info['pzSM']
+event_info['rhat_c3'] = event_info['pzdim6_c3']/event_info['pzSM']
+event_info['rhat_c4'] = event_info['pzdim6_c4']/event_info['pzSM']
+event_info['rhat_c5'] = event_info['pzdim6_c5']/event_info['pzSM']
 
-    
-    # event_info = event_info.append({'Event' : evnt_num, 
-                                    # 'emPID' : particle1_id, 'epPID' : particle2_id,
-                                    # 'pT': part1pT, 
-                                    # 'emEta': part1eta, 
-                                    # 'epEta': part2eta, 
-                                    # 'emPhi': part1phi, 
-                                    # 'epPhi': part2phi,
-                                    # 'Weight_c1': event_weight[0], 
-                                    # 'Weight_c2': event_weight[1],
-                                    # 'Weight_c3': event_weight[2],
-                                    # 'Weight_c4': event_weight[3], 
-                                    # 'Weight_c5': event_weight[4],
-                                    # 'Weight_c6': event_weight[5],
-                                    # 'c2_cWW': cWW[1], 
-                                    # 'c2_cA': cA[1], 
-                                    # 'c3_cWW': cWW[2], 
-                                    # 'c3_cA': cA[2],
-                                    # 'c4_cWW': cWW[3], 
-                                    # 'c4_cA': cA[3], 
-                                    # 'c5_cWW': cWW[4], 
-                                    # 'c5_cA': cA[4],
-                                    # 'c6_cWW': cWW[5],
-                                    # 'c6_cA': cA[5]}, 
-                                    # ignore_index=True)
-#    evnt_num = evnt_num + 1
-
-    
-# Calculating pz from different weights
-#event_info['pzSM'] = event_info['Weight_c1']/(event_info['Weight_c1'].mean())
-#event_info['pzdim6_c2'] = event_info['Weight_c2']/(event_info['Weight_c2'].mean())
-#event_info['pzdim6_c3'] = event_info['Weight_c3']/(event_info['Weight_c3'].mean())
-#event_info['pzdim6_c4'] = event_info['Weight_c4']/(event_info['Weight_c4'].mean())
-#event_info['pzdim6_c5'] = event_info['Weight_c5']/(event_info['Weight_c5'].mean())
-
-# Calculating rhat from different pz
-#event_info['rhat_c2'] = event_info['pzdim6_c2']/event_info['pzSM']
-#event_info['rhat_c3'] = event_info['pzdim6_c3']/event_info['pzSM']
-#event_info['rhat_c4'] = event_info['pzdim6_c4']/event_info['pzSM']
-#event_info['rhat_c5'] = event_info['pzdim6_c5']/event_info['pzSM']
+for key in event_info.keys():
+    print(key, len(event_info[key]))
 
 
-
-#print(event_info.head(5))
+df = pd.DataFrame.from_dict(event_info)
+print(df.head(5))
 
 """ matrix of Wilson Coefficients, ij. The first column is
     1 (corresponding to the SM).  The second column is the
@@ -234,6 +200,7 @@ matrixInverse = np.linalg.inv(genMatrix)
 
 # Just choosing a random event n to look at
 n = np.random.randint(num_evnt,size=1)[0]
+n=1
 
 
 # Getting the weights of that event, making it a column vector
@@ -262,13 +229,16 @@ for i in range(len(all_weight[0])):
     allCross.append(np.mean(all_weight[:,i]))
 
 
-crossCoef = smCross/allCross
+crossCoef = np.array([smCross / item for item in allCross])
+print('\n\n\ncrossCoef = ',crossCoef)
+
 tsm = all_weight[:,0]
 
 
 Tdivtsm = all_weight / tsm
 
 tVector = [np.matmul(matrixInverse,item) for item in all_weight]
+print(len(tVector),len(tVector[0]))
 print('t = ',np.reshape(tVector[n],(len(tVector[n]),1)))
 
 rhat = [crossCoef * item for item in Tdivtsm]
@@ -277,3 +247,12 @@ print('\n\n\n rhat = ',rhat[n])
 """The below calculates rhatc"""
 rhatc = [item / tsm[0] for item in tVector]
 print('\n\n\nrhatc = : ',rhatc[n])
+
+#Calculating wc
+wc = np.array([crossCoef[i] * genMatrix[i] for i in range(len(crossCoef))])
+print('\n\n\nwc = ', wc)
+
+#Quick check that the sum of rhatc * wc gives rhat as above (so they're
+#either both wrong or both right)
+check = np.array([np.sum(rhatc[n]*item) for item in wc])
+print('\n\n\ncheck: ',check)
