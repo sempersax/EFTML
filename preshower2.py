@@ -7,6 +7,7 @@ import numpy as np
 import csv
 import random
 from scipy import linalg
+import json
 
 # Defining a combinatorics function for later use,
 # stolen from stackoverflow
@@ -136,24 +137,22 @@ for i in range(len(params)):
         event_info[paramCodes[params[i]]+str(j+1)] = [total[:,i][j] * item for item in np.ones(len(all_weight))]
     
 #Calculating pz from different weights
-event_info['pzSM'] = event_info['Weight_c1']/(event_info['Weight_c1'].mean())
-event_info['pzdim6_c2'] = event_info['Weight_c2']/(event_info['Weight_c2'].mean())
-event_info['pzdim6_c3'] = event_info['Weight_c3']/(event_info['Weight_c3'].mean())
-event_info['pzdim6_c4'] = event_info['Weight_c4']/(event_info['Weight_c4'].mean())
-event_info['pzdim6_c5'] = event_info['Weight_c5']/(event_info['Weight_c5'].mean())
+#event_info['pzSM'] = event_info['Weight_c1']/(event_info['Weight_c1'].mean())
+#event_info['pzdim6_c2'] = event_info['Weight_c2']/(event_info['Weight_c2'].mean())
+#event_info['pzdim6_c3'] = event_info['Weight_c3']/(event_info['Weight_c3'].mean())
+#event_info['pzdim6_c4'] = event_info['Weight_c4']/(event_info['Weight_c4'].mean())
+#event_info['pzdim6_c5'] = event_info['Weight_c5']/(event_info['Weight_c5'].mean())
 
 #Calculating rhat from different pz
-event_info['rhat_c2'] = event_info['pzdim6_c2']/event_info['pzSM']
-event_info['rhat_c3'] = event_info['pzdim6_c3']/event_info['pzSM']
-event_info['rhat_c4'] = event_info['pzdim6_c4']/event_info['pzSM']
-event_info['rhat_c5'] = event_info['pzdim6_c5']/event_info['pzSM']
+#event_info['rhat_c2'] = event_info['pzdim6_c2']/event_info['pzSM']
+#event_info['rhat_c3'] = event_info['pzdim6_c3']/event_info['pzSM']
+#event_info['rhat_c4'] = event_info['pzdim6_c4']/event_info['pzSM']
+#event_info['rhat_c5'] = event_info['pzdim6_c5']/event_info['pzSM']
 
-for key in event_info.keys():
-    print(key, len(event_info[key]))
+#for key in event_info.keys():
+#    print(key, len(event_info[key]))
 
 
-df = pd.DataFrame.from_dict(event_info)
-print(df.head(5))
 
 """ matrix of Wilson Coefficients, ij. The first column is
     1 (corresponding to the SM).  The second column is the
@@ -200,7 +199,7 @@ matrixInverse = np.linalg.inv(genMatrix)
 
 # Just choosing a random event n to look at
 n = np.random.randint(num_evnt,size=1)[0]
-n=1
+
 
 
 # Getting the weights of that event, making it a column vector
@@ -237,15 +236,15 @@ tsm = all_weight[:,0]
 
 Tdivtsm = all_weight / tsm
 
-tVector = [np.matmul(matrixInverse,item) for item in all_weight]
+tVector = np.array([np.matmul(matrixInverse,item) for item in all_weight])
 print(len(tVector),len(tVector[0]))
 print('t = ',np.reshape(tVector[n],(len(tVector[n]),1)))
 
-rhat = [crossCoef * item for item in Tdivtsm]
+rhat = np.array([crossCoef * item for item in Tdivtsm])
 print('\n\n\n rhat = ',rhat[n])
 
 """The below calculates rhatc"""
-rhatc = [item / tsm[0] for item in tVector]
+rhatc = np.array([item / tsm[0] for item in tVector])
 print('\n\n\nrhatc = : ',rhatc[n])
 
 #Calculating wc
@@ -256,3 +255,42 @@ print('\n\n\nwc = ', wc)
 #either both wrong or both right)
 check = np.array([np.sum(rhatc[n]*item) for item in wc])
 print('\n\n\ncheck: ',check)
+
+for i in range(len(tVector[0])):
+    event_info['tVector'+str(i+1)] = tVector[:,i]
+
+for i in range(len(rhat[0])):
+    event_info['rhat'+str(i+1)] = rhat[:,i]
+
+for i in range(len(rhatc[0])):
+    event_info['rhatc_C'+str(i+1)] = rhatc[:,i]
+
+
+for key in event_info.keys():
+    if type(event_info[key]) == np.ndarray:
+        event_info[key] = event_info[key].tolist()
+    for i in range(len(event_info[key])):
+        if type(event_info[key][i]) == np.ndarray:
+            event_info[key][i] = event_info[key][i].tolist()
+
+# event_info['rhatc'] = rhatc
+# event_info['rhat'] = rhat
+
+# df = pd.DataFrame.from_dict(event_info)
+# print(df.head(5))
+
+# df.to_csv('results.csv')
+with open('results.json', 'w') as file:
+    file.write(json.dumps(event_info, indent = 0))
+    
+file.close()
+
+with open('results.json', 'r') as file:
+    df = json.load(file)
+
+for key in df.keys():
+    df[key] = np.array(df[key])
+
+df = pd.DataFrame.from_dict(df)
+
+print(df.iloc[[n]])
