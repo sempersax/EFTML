@@ -49,7 +49,6 @@ def train_data():
     
     lines = lines.split(',')
     params = [int(x) for x in lines[:-1]]
-    print(params)
     
     # Wilson Coeff by case number 1-6 (2 coefficients need 6 equations
     # for 6 unknowns). Obtained currently by reading in 
@@ -78,8 +77,7 @@ def train_data():
             total.append(wilsonCo[item-1])
         total = np.array(total)
         total = np.transpose(total)
-    
-    
+
     except FileNotFoundError:
         print("File DOES NOT EXIST! Reading from reweight_card.dat instead.")
         coefFile =  open('../../Cards/reweight_card.dat', 'r')
@@ -102,7 +100,6 @@ def train_data():
         total = np.array(total)
         total = np.transpose(total)
     
-    print(total)
     num_evnt = len(pids)
     
     particle1_id = 11
@@ -125,18 +122,20 @@ def train_data():
     event_info = {'Event' : np.arange(1,num_evnt+1),
                 'emPID' : np.ones(num_evnt)*particle1_id,
                 'epPID' : np.ones(num_evnt)*particle2_id,
-                'emPT'  : np.array(part1pT),
-                'epPT'  : np.array(part2pT),
-                'emEta' : np.array(part1eta),
-                'epEta' : np.array(part2eta)
+                'four_emPT'  : np.array(part1pT),
+                'four_epPT'  : np.array(part2pT),
+                'four_emEta' : np.array(part1eta),
+                'four_epEta' : np.array(part2eta),
+                'four_emPhi' : np.array(part1phi),
+                'four_epPhi' : np.array(part2phi)
                 }
     
     for i in range(len(all_weight[0])):
         event_info['Weight_c{}'.format(str(i+1))] = all_weight[:,i]
     for i in range(len(params)):
         for j in range(len(total[:,0])):
-            event_info[paramCodes[params[i]]+str(j+1)] = [total[:,i][j] * item for item in np.ones(len(all_weight))]
-        
+            event_info['wilson_'+paramCodes[params[i]]+str(j+1)] = np.array([total[:,i][j] * item for item in np.ones(len(all_weight))])
+    
     #Calculating pz from different weights
     #event_info['pzSM'] = event_info['Weight_c1']/(event_info['Weight_c1'].mean())
     #event_info['pzdim6_c2'] = event_info['Weight_c2']/(event_info['Weight_c2'].mean())
@@ -191,7 +190,7 @@ def train_data():
     # Combining the mixed and unmixed into single matrix
     genMatrix = np.append(ones, mixing, axis = 1)
     
-    print('Generalized Matrix: \n', genMatrix, '\n\n\n')
+    #print('Generalized Matrix: \n', genMatrix, '\n\n\n')
     
     # use numpy to invert the matrix.  This is a touchy step, 
     # especially if the matrix is ill-conditioned (not singular,
@@ -209,10 +208,10 @@ def train_data():
     
     # printing the event, the inverse of the matrix, and the column
     # vector of known weights
-    print('Wilson Coefficients: \n', total, '\n\n\n')
-    print('\nEvent # ', n, '\n\n\n')
-    print("\nA^-1 = \n", matrixInverse, '\n\n\n')
-    print("\nT = \n", T, '\n\n\n')
+    # print('Wilson Coefficients: \n', total, '\n\n\n')
+    # print('\nEvent # ', n, '\n\n\n')
+    # print("\nA^-1 = \n", matrixInverse, '\n\n\n')
+    # print("\nT = \n", T, '\n\n\n')
     
     """From here down, we get the cross section for the standard model,
     we get the cross section in for each different case of Wilson Coefficients 
@@ -230,7 +229,7 @@ def train_data():
     
     
     crossCoef = np.array([smCross / item for item in allCross])
-    print('\n\n\ncrossCoef = ',crossCoef)
+    #print('\n\n\ncrossCoef = ',crossCoef)
     
     tsm = all_weight[:,0]
     
@@ -238,64 +237,57 @@ def train_data():
     Tdivtsm = all_weight / tsm
     
     tVector = np.array([np.matmul(matrixInverse,item) for item in all_weight])
-    print(len(tVector),len(tVector[0]))
-    print('t = ',np.reshape(tVector[n],(len(tVector[n]),1)))
+    #print('t = ',np.reshape(tVector[n],(len(tVector[n]),1)))
     
     rhat = np.array([crossCoef * item for item in Tdivtsm])
-    print('\n\n\n rhat = ',rhat[n])
     
     """The below calculates rhatc"""
     rhatc = np.array([item / tsm[0] for item in tVector])
-    print('\n\n\nrhatc = : ',rhatc[n])
-    
+
     #Calculating wc
     wc = np.array([crossCoef[i] * genMatrix[i] for i in range(len(crossCoef))])
-    print('\n\n\nwc = ', wc)
     
     #Quick check that the sum of rhatc * wc gives rhat as above (so they're
     #either both wrong or both right)
-    check = np.array([np.sum(rhatc[n]*item) for item in wc])
-    print('\n\n\ncheck: ',check)
+        # check = np.array([np.sum(rhatc[i]*item) for item in wc])
+        # print('\n\n\ncheck: ',check)
     
     for i in range(len(tVector[0])):
         event_info['tVector'+str(i+1)] = tVector[:,i]
-    
+        
     for i in range(len(rhat[0])):
         event_info['rhat'+str(i+1)] = rhat[:,i]
-    
+        
     for i in range(len(rhatc[0])):
         event_info['rhatc_C'+str(i+1)] = rhatc[:,i]
-    
+         
     train_info = event_info
-    for key in event_info.keys():
-        if type(event_info[key]) == np.ndarray:
-            event_info[key] = event_info[key].tolist()
-        for i in range(len(event_info[key])):
-            if type(event_info[key][i]) == np.ndarray:
-                event_info[key][i] = event_info[key][i].tolist()
+    # for key in event_info.keys():
+        # if type(event_info[key]) == np.ndarray:
+            # event_info[key] = event_info[key].tolist()
+        # for i in range(len(event_info[key])):
+            # if type(event_info[key][i]) == np.ndarray:
+                # event_info[key][i] = event_info[key][i].tolist()
     
-    # event_info['rhatc'] = rhatc
-    # event_info['rhat'] = rhat
-    
-    # df = pd.DataFrame.from_dict(event_info)
-    # print(df.head(5))
-    
-    # df.to_csv('results.csv')
-    with open('results.json', 'w') as file:
-        file.write(json.dumps(event_info, indent = 0))
+    # with open('results.json', 'w') as file:
+        # file.write(json.dumps(event_info, indent = 0))
         
-    file.close()
+    # file.close()
     
-    with open('results.json', 'r') as file:
-        df = json.load(file)
+    # with open('results.json', 'r') as file:
+        # df = json.load(file)
     
-    for key in df.keys():
-        df[key] = np.array(df[key])
+    # for key in df.keys():
+        # df[key] = np.array(df[key])
     
-    df = pd.DataFrame.from_dict(df)
+    # df = pd.DataFrame.from_dict(df)
     
-    print(df.iloc[[n]])
-    return(train_info)
+    fourVectors = {k: v for (k, v) in train_info.items() if 'four_' in k}
+    wilsonCos = {k: v for (k,v) in train_info.items() if 'wilson_' in k}
+    rhatcs = {k: v for (k,v) in train_info.items() if 'rhatc_' in k}
+    print('Done calculating, moving to network...')
+    
+    return fourVectors, rhatcs, wilsonCos
 
 if __name__ == "__main__":
     train_data()
