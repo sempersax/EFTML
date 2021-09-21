@@ -12,7 +12,8 @@ import torch.nn.functional as F
 import torch.optim as optim
 
 from matplotlib import pyplot
-from regressor import Net
+from regressor import Conv1dNet
+from regressor import LinearNet
 from sklearn.model_selection import train_test_split
 from sklearn import metrics
 from sklearn.metrics import accuracy_score
@@ -21,6 +22,13 @@ from tqdm import tqdm
 from torch.autograd import Variable
 from torch.utils.data import Dataset, TensorDataset, DataLoader
 
+"""
+ Loading data from preshower.  We get the four vectors (inputs), rhatcs (outputs),
+ the wilson coefficients (maybe don't need, but they're here) and the net_num, which
+ is the number of networks we will need to train.
+"""
+fourVectors, rhatcs, wilsonCos, net_num = ps.train_data()
+
 matplotlib.use('Agg')
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -28,15 +36,11 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print(device)
 
 # defining the model
-model = Net()
+model = LinearNet(net_num)
 model = model.double()
 print(model)
 
 
-# Loading data from preshower
-
-
-fourVectors, rhatcs, wilsonCos = ps.train_data()
 
 X_data = np.array([fourVectors[key] for key in fourVectors.keys()])
 X_data = np.transpose(X_data)
@@ -88,7 +92,7 @@ testers = [DataLoader(dataset = _, batch_size=1, shuffle=False) for _ in test_da
 model.to(device)
 
 
-
+#yabbadabba
 def train_model(model, epochs, lr, trainloader, testloader):
     """
     Defining the loss function, MSE -> Mean Squared Error
@@ -146,26 +150,55 @@ def train_model(model, epochs, lr, trainloader, testloader):
         test_loss=test_loss,
     )
 
-if __name__ == "__main__":
-    
+
+def linear_model():
     epochs = 30
-    lr = 10**-3
+    lr = 10 ** -3
     results = []
-    for i in range(len(trainers)):
-        print(f"rhatc{i+1} being trained")
+    for i in range(net_num):
+        print(f"rhatc{i + 1} being trained")
         result = train_model(model, epochs, lr, trainers[i], testers[i])
         results.append(result)
         print('\n\n\n')
-    Path = os.getcwd()+"/regression.pt"
+    Path = os.getcwd() + "/regression.pt"
     torch.save(model.state_dict(), Path)
-    
+
     for i in range(len(results)):
-        if len(results[i]['train_loss'])==len(results[i]['test_loss']):
+        if len(results[i]['train_loss']) == len(results[i]['test_loss']):
             plt.plot(results[i]['train_loss'], label='Training loss')
             plt.plot(results[i]['test_loss'], label='Validation loss')
             plt.legend()
-            plt.ylim(-0.1*max(results[i]['train_loss']),1.1*max(results[i]['train_loss']))
-            plt.savefig(os.getcwd()+f"/regress_loss{i+1}.pdf")
+            plt.ylim(-0.1 * max(results[i]['train_loss']), 1.1 * max(results[i]['train_loss']))
+            plt.savefig(os.getcwd() + f"/regress_loss{i + 1}.pdf")
             plt.close()
         else:
             print("loss length is not the same")
+
+
+def conv_model():
+    epochs = 30
+    lr = 10 ** -3
+    results = []
+    for i in range(len(trainers)):
+        print(f"rhatc{i + 1} being trained")
+        result = train_model(model, epochs, lr, trainers[i], testers[i])
+        results.append(result)
+        print('\n\n\n')
+    Path = os.getcwd() + "/regression.pt"
+    torch.save(model.state_dict(), Path)
+
+    for i in range(len(results)):
+        if len(results[i]['train_loss']) == len(results[i]['test_loss']):
+            plt.plot(results[i]['train_loss'], label='Training loss')
+            plt.plot(results[i]['test_loss'], label='Validation loss')
+            plt.legend()
+            plt.ylim(-0.1 * max(results[i]['train_loss']), 1.1 * max(results[i]['train_loss']))
+            plt.savefig(os.getcwd() + f"/regress_loss{i + 1}.pdf")
+            plt.close()
+        else:
+            print("loss length is not the same")
+
+
+if __name__ == "__main__":
+    linear_model()
+
